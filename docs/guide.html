@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="從 Issue、PR、Review 到 Jaccard 與 eigenvector：第 J 組開源協作報告的完整白話導讀，附資料定義、算式、結果與重現步驟。">
+  <meta name="theme-color" content="#12352f">
+  <title>白話導讀｜開源協作地圖 · 第 J 組</title>
+  <link rel="stylesheet" href="./guide.css">
+</head>
+<body>
+  <a class="skip" href="#reading">跳至導讀內容</a>
+  <header class="topbar"><a class="brand" href="./index.html">J<span>.</span> 開源協作地圖</a><nav aria-label="網站導覽"><a href="./index.html#network">互動報告 ↗</a><a href="https://github.com/xxoon0987/sna-j-gharchive">GitHub 專案 ↗</a></nav></header>
+  <main>
+    <div class="intro">
+      <p class="eyebrow">GROUP J / READING GUIDE</p>
+      <h1>先看懂，<br><em>再讀懂數字。</em></h1>
+      <p class="lede">從「這份報告在做什麼」開始，一步一步理解公開活動如何變成網絡、指標與結論。</p>
+      <p class="intro-note">研究：2025 年 1 月 · 10 個 Hugging Face 專案<br>整理：2026 年 10 月 · 固定資料，不即時追蹤</p>
+      <div class="number-path" aria-label="帳號篩選條件">
+        <div><strong>1,379</strong><span>研究資料裡的不同帳號</span></div><b aria-hidden="true">→</b>
+        <div><strong>93</strong><span>其中，參與至少兩個專案</span></div><b aria-hidden="true">→</b>
+        <div><strong>59</strong><span>其中，又同時參與兩類活動</span></div>
+      </div>
+      <p class="path-note">兩類活動＝Issue／討論，以及 PR／Review。93 包含在 1,379 裡；59 包含在 93 裡。</p>
+    </div>
+    <div class="reading-layout">
+      <aside class="contents"><p class="eyebrow">閱讀路線</p><nav aria-label="章節目錄"><a href="#overview"><span>01</span>先看懂報告</a><a href="#data"><span>02</span>資料來源與內容</a><a href="#methods"><span>03</span>網絡與數學</a><a href="#results"><span>04</span>結果與限制</a><a href="#questions"><span>05</span>常見疑問</a><a href="#reproduce"><span>06</span>重現與發布</a></nav><p>第一次閱讀：從第 1 章開始。<br>準備答問：直接看第 5 章。<br>查計算參數：看第 3 章。</p><a class="download" href="./repro/centrality-scores.csv" download>下載完整中心度 CSV ↓</a></aside>
+      <article id="reading"><section class="chapter" id="overview"><h2>01｜先看懂這個報告</h2>
+<h3>我們到底在研究什麼？</h3>
+<p>開源軟體的工作可能由不同帳號完成：有人發現問題、有人回答、有人的修改被送出審查。這份報告把公開活動紀錄整理成關係圖，觀察「哪些帳號參與哪些專案」，以及不同活動的參與帳號有多少重疊。</p>
+<p>例如甲帳號只在專案 X 留言，乙帳號同時在 X 和 Y 有活動。兩者都有參與，但乙在這個觀察範圍內具有跨專案位置。這個位置值得研究，卻不能單靠它斷言乙比較厲害，或真的促成兩個團隊合作。</p>
+<h3>三個研究問題</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>問題</th>
+<th>使用的資料或方法</th>
+<th>可以回答的事情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Issue、PR、Review 是不是同一批帳號？</td>
+<td>比較帳號集合，計算 Jaccard</td>
+<td>兩種活動的參與帳號重疊程度</td>
+</tr>
+<tr>
+<td>哪些帳號跨越專案？</td>
+<td>帳號連到的不同儲存庫數與四種中心度</td>
+<td>帳號在界定網絡內的位置</td>
+</tr>
+<tr>
+<td>換一種活動，網絡會怎麼變？</td>
+<td>固定時間與十個專案，切換事件類型</td>
+<td>關係定義改變後，帳號數與連線如何改變</td>
+</tr>
+</tbody>
+</table></div>
+<h3>先分清楚四個東西</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>名詞</th>
+<th>白話意思</th>
+<th>本報告中的例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GitHub</td>
+<td>存放程式、追蹤修改、協作開發的平台</td>
+<td>專案可以有議題、PR 和審查紀錄</td>
+</tr>
+<tr>
+<td>儲存庫（repository，簡稱 repo）</td>
+<td>一個專案的程式碼、文件與版本歷史所在的地方</td>
+<td><code>huggingface/transformers</code></td>
+</tr>
+<tr>
+<td>事件（event）</td>
+<td>平台記錄的一次特定動作</td>
+<td>某帳號在某時關閉一張問題單</td>
+</tr>
+<tr>
+<td>本組資料集</td>
+<td>查詢與分析所用的事件紀錄集合</td>
+<td>2025 年 1 月、十個 repo、五種事件</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>十個 Hugging Face 儲存庫是研究對象；本組查詢取得的事件紀錄才是分析資料集。</strong></p>
+<h3>十個專案各在做什麼？</h3>
+<p>這十個 repo 位於 Hugging Face 的組織帳號下。以下是用途的概括介紹，連結可查看各專案的官方說明；本研究沒有分析它們的模型效能。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>儲存庫</th>
+<th>可以怎麼理解它的用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/huggingface/transformers">Transformers</a></td>
+<td>載入、訓練與使用機器學習模型的工具</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/datasets">Datasets</a></td>
+<td>載入與處理資料集的程式庫；名稱叫 Datasets，但這個 GitHub repo 本身是工具專案</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/tokenizers">Tokenizers</a></td>
+<td>將文字轉成模型使用的 token，並提供相關處理工具</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/accelerate">Accelerate</a></td>
+<td>協助訓練程式在不同硬體或多個運算裝置上執行</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/diffusers">Diffusers</a></td>
+<td>使用與訓練擴散生成模型的工具</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/peft">PEFT</a></td>
+<td>用較少的可訓練參數微調模型的工具</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/trl">TRL</a></td>
+<td>提供語言模型訓練、微調與強化學習相關方法</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/huggingface_hub">Hugging Face Hub</a></td>
+<td>在程式中下載、上傳與管理 Hugging Face Hub 資源的客戶端程式庫</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/smolagents">Smolagents</a></td>
+<td>建立能使用工具的 AI agent 的程式庫</td>
+</tr>
+<tr>
+<td><a href="https://github.com/huggingface/text-generation-inference">Text Generation Inference</a></td>
+<td>部署文字生成模型、提供推論服務的工具</td>
+</tr>
+</tbody>
+</table></div>
+<p>公開 repo 可以讓外部帳號提議修改，但不是任何人都能直接覆寫主專案。外部貢獻者常在自己的分支或 fork 準備修改，再送 PR；有權限的維護者決定是否合併。PR 也可能修改文件或設定，不限於程式碼。</p>
+<h3>可以用這句話介紹報告</h3>
+<blockquote>
+<p>我們用 2025 年 1 月十個 Hugging Face 專案的公開 GitHub 事件，研究不同活動的帳號是否重疊，以及哪些帳號跨越專案。我們把事件轉成帳號與儲存庫的網絡，用 Jaccard 和四種中心度描述參與模式。</p>
+</blockquote>
+<h3>我們做了哪些分析工作？</h3>
+<ol>
+<li>設定研究範圍：十個儲存庫、一個月、五種事件。</li>
+<li>從 ClickHouse 的 GH Archive 鏡像查詢需要的欄位。</li>
+<li>排除可辨識的自動化帳號事件。</li>
+<li>把事件整理成帳號集合與 0／1 參與矩陣。</li>
+<li>計算重疊、跨專案參與、四種中心度與每日平均。</li>
+<li>把結果做成能切換事件類型的網站，附上程式和解讀限制。</li>
+</ol>
+<p>這是「既有資料的再分析」。資料的收集來源與本組的分析貢獻應分別交代。</p>
+<p><a href="#data">下一篇：資料來源、欄位與清理</a></p></section>
+<section class="chapter" id="data"><h2>02｜資料來源、欄位與清理</h2>
+<h3>資料從哪裡來？</h3>
+<p><a href="https://www.gharchive.org/">GH Archive</a>封存 GitHub Events API 的公開活動紀錄，官方按小時提供壓縮的 JSON 事件檔。本組使用 ClickHouse 的公開 <code>github.github_events</code> 鏡像查詢需要的範圍，回傳格式是 <code>JSONEachRow</code>，儲存成 <code>.jsonl</code> 檔：每一行是一筆事件物件。</p>
+<p><a href="https://github.com/ClickHouse/sql.clickhouse.com/blob/main/load_scripts/github_events/ingest.sh">ClickHouse 的公開匯入程式</a>顯示它從 GH Archive 的逐時檔取得資料並整理欄位。本組沒有自行下載全部逐時壓縮檔，也沒有逐筆比對鏡像與官方原檔，因此不能宣稱兩者完全一致或完整無遺漏。</p>
+<p>採用鏡像本身不必然比較不精確；要確認完整性，需要檢查期間、篩選、欄位轉換、回傳限制與原始紀錄。下載更多不相關資料，也不會自動改善本研究的精確性。</p>
+<h3>這份資料涵蓋什麼？</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>條件</th>
+<th>本組的設定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>開始時間</td>
+<td>2025-01-01 00:00:00 UTC，包含這個時間</td>
+</tr>
+<tr>
+<td>結束時間</td>
+<td>2025-02-01 00:00:00 UTC，不包含這個時間</td>
+</tr>
+<tr>
+<td>專案</td>
+<td>前一篇列出的十個 Hugging Face 儲存庫，以固定 repo ID 查詢</td>
+</tr>
+<tr>
+<td>事件</td>
+<td>IssuesEvent、IssueCommentEvent、PullRequestEvent、PullRequestReviewEvent、PullRequestReviewCommentEvent</td>
+</tr>
+<tr>
+<td>沒有納入</td>
+<td>PushEvent、星號、fork 等其他事件；私人與線下活動</td>
+</tr>
+<tr>
+<td>查詢方式</td>
+<td>分成 1–7、8–14、15–21、22–31 日四段</td>
+</tr>
+</tbody>
+</table></div>
+<p>這是 UTC 的一月，與台灣時間零時起訖的一月不同。日期屬於 2025 年；報告網站整理於 2026 年。</p>
+<h3>原始資料不是三個勾選欄位</h3>
+<p>原始資料是一筆筆活動。以下為<strong>虛構教學例子</strong>，不是研究中的原始列：</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>時間</th>
+<th>觸發事件的帳號</th>
+<th>儲存庫</th>
+<th>事件類型</th>
+<th>動作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 月 3 日</td>
+<td>A</td>
+<td>專案 X</td>
+<td>IssuesEvent</td>
+<td>opened</td>
+</tr>
+<tr>
+<td>1 月 5 日</td>
+<td>A</td>
+<td>專案 X</td>
+<td>PullRequestEvent</td>
+<td>opened</td>
+</tr>
+<tr>
+<td>1 月 8 日</td>
+<td>B</td>
+<td>專案 Y</td>
+<td>PullRequestReviewEvent</td>
+<td>created</td>
+</tr>
+<tr>
+<td>1 月 9 日</td>
+<td>A</td>
+<td>專案 Y</td>
+<td>IssueCommentEvent</td>
+<td>created</td>
+</tr>
+</tbody>
+</table></div>
+<p>同一個帳號可能出現很多次。分析時，才把它轉成「這個帳號是否有 Issue 活動」「是否參與某個專案」等 0／1 欄位。1 表示至少有一筆符合條件紀錄；0 表示這份選定資料中沒有這種紀錄。</p>
+<h3>我們實際擷取的 9 個欄位</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>欄位</th>
+<th>白話解釋</th>
+<th>使用時要注意</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>repo_id</code></td>
+<td>儲存庫識別碼</td>
+<td>用它指定研究範圍</td>
+</tr>
+<tr>
+<td><code>repo_name</code></td>
+<td>儲存庫名稱，包含擁有者</td>
+<td>分析程式檢查名稱是否在選定清單</td>
+</tr>
+<tr>
+<td><code>event_type</code></td>
+<td>事件類型</td>
+<td>決定分到 Issue、討論、PR 或 Review</td>
+</tr>
+<tr>
+<td><code>actor_login</code></td>
+<td>觸發這筆事件的帳號名稱</td>
+<td>不一定是 Issue 或 PR 的原作者</td>
+</tr>
+<tr>
+<td><code>creator_user_login</code></td>
+<td>鏡像從 payload 整理出的建立者名稱</td>
+<td>意義依事件而變；留言事件通常是留言作者，不能一律當成原議題作者</td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td>opened、closed、created 等動作</td>
+<td>本研究依事件類型納入，沒有再只篩選 opened</td>
+</tr>
+<tr>
+<td><code>review_state</code></td>
+<td>審查狀態欄位</td>
+<td>主網絡未用狀態區分核准或要求修改</td>
+</tr>
+<tr>
+<td><code>event_time_utc</code></td>
+<td>事件發生的 UTC 時間</td>
+<td>用於期間與時間切片</td>
+</tr>
+<tr>
+<td><code>number</code></td>
+<td>儲存庫內的議題或 PR 編號</td>
+<td>必須搭配 repo 才有意義；不是跨 GitHub 的唯一事件編號</td>
+</tr>
+</tbody>
+</table></div>
+<p>資料沒有擷取留言正文、完整修改內容、GitHub event ID、actor ID 或是否合併等欄位。因此無法用這份擷取資料直接判斷每筆 PR 最後是否成功、內容品質、真人身分或完整事件去重。帳號名稱改變也沒有另外做身分合併。</p>
+<h3>Issue、PR、Review 到底是什麼？</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>類別</th>
+<th>白話情境</th>
+<th>本組計入的活動</th>
+<th>不能直接當成什麼</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Issue（議題）</td>
+<td>「這裡有錯誤」「希望增加功能」等問題單</td>
+<td>IssuesEvent；本快照有開啟、關閉、重新開啟</td>
+<td>已解決問題、已修改程式碼</td>
+</tr>
+<tr>
+<td>討論</td>
+<td>在 issue 或 PR 下留言</td>
+<td>IssueCommentEvent</td>
+<td>全部都是 issue 留言，或留言一定回給原作者</td>
+</tr>
+<tr>
+<td>PR（Pull Request）</td>
+<td>已準備一份修改，請專案考慮合併</td>
+<td>PullRequestEvent；本快照有開啟、關閉、重新開啟</td>
+<td>只有口頭建議、已成功合併，或每位事件觸發者都是 PR 作者</td>
+</tr>
+<tr>
+<td>Review（審查）</td>
+<td>對 PR 提交審查或留下程式碼審查留言</td>
+<td>PullRequestReviewEvent 加 PullRequestReviewCommentEvent</td>
+<td>只點開瀏覽、一次事件就等於一份完整審查</td>
+</tr>
+</tbody>
+</table></div>
+<p>PR 可以包含文件、設定與程式碼等修改。GitHub 的帳號角色不是固定職業：同一帳號可以同時出現在多個類別。<a href="https://docs.github.com/en/rest/using-the-rest-api/github-event-types">GitHub 官方事件定義</a>可用來核對事件觸發者與 payload。</p>
+<h3>資料清理做了什麼？</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>步驟</th>
+<th style="text-align: right;">事件列數</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原查詢回傳</td>
+<td style="text-align: right;">13,555</td>
+</tr>
+<tr>
+<td>排除名稱以 <code>[bot]</code> 結尾</td>
+<td style="text-align: right;">−405</td>
+</tr>
+<tr>
+<td>排除文件建置帳號 <code>HuggingFaceDocBuilderDev</code></td>
+<td style="text-align: right;">−408</td>
+</tr>
+<tr>
+<td>保留</td>
+<td style="text-align: right;"><strong>12,742</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>名稱尾碼比對不分大小寫；文件建置帳號依固定名稱排除，辨識依據見 <a href="https://github.com/huggingface/doc-builder">Hugging Face doc-builder</a>。本快照缺少 <code>actor_login</code> 的列數是 0；程式遇到空帳號時也會略過。原程式的 <code>humanRows</code> 是歷史欄位名稱，應讀成「清理後保留列數」，不能保證全部來自真人。</p>
+<p>清理不會把同一帳號的重複活動刪成一筆；一個帳號提議題又留言，本來就可能有兩筆事件。擷取時未保留唯一 event ID，沒有進行依 event ID 去重，也不能把欄位恰好相同的兩列直接判定成重複資料。</p>
+<h3>五種事件為什麼變成四類？</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>原始事件類型</th>
+<th style="text-align: right;">清理後列數</th>
+<th>網站分類</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IssuesEvent</td>
+<td style="text-align: right;">1,070</td>
+<td>Issue</td>
+</tr>
+<tr>
+<td>IssueCommentEvent</td>
+<td style="text-align: right;">4,474</td>
+<td>討論</td>
+</tr>
+<tr>
+<td>PullRequestEvent</td>
+<td style="text-align: right;">1,874</td>
+<td>PR</td>
+</tr>
+<tr>
+<td>PullRequestReviewEvent</td>
+<td style="text-align: right;">2,941</td>
+<td>Review</td>
+</tr>
+<tr>
+<td>PullRequestReviewCommentEvent</td>
+<td style="text-align: right;">2,383</td>
+<td>Review</td>
+</tr>
+<tr>
+<td>合計</td>
+<td style="text-align: right;"><strong>12,742</strong></td>
+<td>Review 合計為 5,324</td>
+</tr>
+</tbody>
+</table></div>
+<p>列數相加可以得到總事件數；各類「不同帳號數」因為帳號重疊，不能直接相加當成總人數。</p>
+<p><a href="#methods">下一篇：從事件到網絡與數學</a></p></section>
+<section class="chapter" id="methods"><h2>03｜從事件到網絡與數學</h2>
+<h3>第一步：決定一條線代表什麼</h3>
+<p><strong>一條線代表：某帳號在某儲存庫、選定期間內，至少有一筆符合目前事件類型的紀錄。</strong>它可以來自議題、留言、PR 或審查。這不要求程式碼真的被修改或合併。</p>
+<p>先用虛構例子看 0／1 矩陣：</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>帳號</th>
+<th style="text-align: right;">專案 X</th>
+<th style="text-align: right;">專案 Y</th>
+<th style="text-align: right;">專案 Z</th>
+<th style="text-align: right;">一列加總</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td>B</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td>C</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+</tr>
+</tbody>
+</table></div>
+<p>A 在 X 有十筆、Y 有一筆事件，也只連到兩個不同專案，因此 degree 是 2。B 只連到 Y。矩陣的 0 僅代表「沒有觀察到符合定義的事件」，不代表帳號完全沒有關心或私下參與該專案。</p>
+<p>記這張矩陣為 <code>B</code>，則 <code>B[a,r] = 1</code> 表示帳號 a 參與儲存庫 r。帳號 degree 是 <code>Σ_r B[a,r]</code>；兩個專案的共同參與帳號數是 <code>Σ_a B[a,r1] × B[a,r2]</code>。例如 X 和 Y 共同連到 A，故共同帳號數為 1。</p>
+<p>這是「二模／雙模網絡」：節點有帳號、儲存庫兩種，邊連在不同種類之間。主圖沒有直接畫「帳號與帳號互相認識」或「專案依賴另一專案」。</p>
+<h3>第二步：1,379、93、59 分別怎麼來？</h3>
+<ol>
+<li>對清理後事件的 <code>actor_login</code> 取不同值，得到 <strong>1,379 個帳號名稱</strong>。</li>
+<li>對每個帳號計算出現過的不同儲存庫數；數量至少 2 的有 <strong>93 個</strong>。</li>
+<li>在這 93 個中，再要求帳號至少有一次「Issue 或討論」，以及至少有一次「PR 或 Review」，得到 <strong>59 個</strong>。</li>
+</ol>
+<p>這裡把 Issue／討論稱為「社群類」、PR／Review 稱為「程式碼類」，只是本報告的分析分類。PR 也可能改文件，Review 也包含溝通，不代表兩類活動在現實中完全分離。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>虛構帳號</th>
+<th>活動</th>
+<th>跨至少兩個專案？</th>
+<th>同時有兩類活動？</th>
+<th>算入 93？</th>
+<th>算入 59？</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>在 X 提 Issue，在 Y 做 Review</td>
+<td>是</td>
+<td>是</td>
+<td>是</td>
+<td>是</td>
+</tr>
+<tr>
+<td>B</td>
+<td>在 X、Y 都提 Issue</td>
+<td>是</td>
+<td>否</td>
+<td>是</td>
+<td>否</td>
+</tr>
+<tr>
+<td>C</td>
+<td>只在 X 提 Issue 和 PR</td>
+<td>否</td>
+<td>是</td>
+<td>否</td>
+<td>否</td>
+</tr>
+<tr>
+<td>D</td>
+<td>只在 X 做 Review</td>
+<td>否</td>
+<td>否</td>
+<td>否</td>
+<td>否</td>
+</tr>
+</tbody>
+</table></div>
+<p>不要求在每個參與專案都做過兩類活動，也不要求 Issue 和 PR 對應同一個問題。這項條件沒有檢查行為先後。</p>
+<p>完整 1,379 個帳號中，同時有兩類活動的共有 312 個；其中 59 個還跨至少兩個專案。這也說明「跨角色」和「跨專案」是兩個不同條件。</p>
+<h3>第三步：Jaccard 衡量兩組帳號的重疊比例</h3>
+<p>把有 Issue 事件的帳號集合叫 I，把有 PR 事件的帳號集合叫 P：</p>
+<pre><code class="language-text">Jaccard(I,P) = |I ∩ P| / |I ∪ P|
+交集 I ∩ P：兩種事件都有的不同帳號
+聯集 I ∪ P：至少有其中一種事件的不同帳號
+</code></pre>
+<p>本組的實際數值：</p>
+<pre><code class="language-text">Issue 帳號：538
+PR 帳號：388
+共同帳號：125
+聯集：538 + 388 − 125 = 801
+Jaccard：125 ÷ 801 = 0.156054… → 網站顯示 0.156
+</code></pre>
+<p>0 代表沒有共同帳號，1 代表兩組帳號完全相同。這不是「連擊次數」，也不看帳號先做哪件事。0.156 的分母是聯集 801，不是 Issue 的 538 或 PR 的 388；因此不能說成「15.6% 的 Issue 帳號轉去寫 PR」，更不能說「15.6% 的議題被解決」。</p>
+<h3>第四步：固定同一張圖，計算四種中心度</h3>
+<p>中心度要先說明「對哪張網絡計算」。本組四項比較固定使用<strong>全部所選事件</strong>的跨專案二模核心：</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>設定</th>
+<th>值與意義</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>帳號門檻</td>
+<td>在十個專案中至少參與 2 個</td>
+</tr>
+<tr>
+<td>帳號節點</td>
+<td>93</td>
+</tr>
+<tr>
+<td>儲存庫節點</td>
+<td>10</td>
+</tr>
+<tr>
+<td>總節點數 n</td>
+<td>103</td>
+</tr>
+<tr>
+<td>邊數</td>
+<td>229</td>
+</tr>
+<tr>
+<td>方向</td>
+<td>無向；一條帳號—專案參與關係</td>
+</tr>
+<tr>
+<td>權重</td>
+<td>無權重、二元；活動次數不加重邊</td>
+</tr>
+<tr>
+<td>連通性</td>
+<td>核心為連通圖，所有節點之間存在路徑</td>
+</tr>
+<tr>
+<td>計算對象</td>
+<td>路徑可經過全部 103 個節點，呈現排名只比較 93 個帳號</td>
+</tr>
+</tbody>
+</table></div>
+<p>完整帳號—專案矩陣是 1,379 × 10，共 1,515 條不同的參與關係；扣掉 1,286 個單一專案帳號後，核心矩陣是 93 × 10，共 229 條關係。這裡的「核心」只是我們的取樣名稱，不是 k-core 演算法。</p>
+<h4>Degree：直接連到幾個專案？</h4>
+<p>白話是「參與範圍有多廣」。公式為 <code>degree(a) = Σ_r B[a,r]</code>。這裡展示原始連結數，不是除以 n−1 的標準化 degree centrality。Wauplin 在核心連到 5 個選定專案，所以 degree＝5。事件發生一百次也不會把同一條邊算一百次。</p>
+<h4>Closeness：沿著關係，到其他節點的距離有多短？</h4>
+<p>白話是「從這個位置出發，沿網絡走到其他位置是否比較近」。在本組連通核心中，<code>C(a) = (n−1) / Σ_{v≠a} d(a,v)</code>，其中 d 是最短路徑的邊數，n＝103。使用 <code>networkx.closeness_centrality(core)</code>。</p>
+<p>帳號到專案可能一步，帳號到另一帳號至少兩步，路徑會在兩種節點之間交替。這是數學距離，不是訊息實際傳遞速度，也不是兩個人感情的親近程度。</p>
+<h4>Betweenness：有多少最短路徑經過這裡？</h4>
+<p>白話是「這個節點多常位在別的節點之間的最短路徑上」。對不包含 a 的節點對 s、t，加總 <code>σ_st(a) / σ_st</code>：σ_st 是兩者最短路徑總數，σ_st(a) 是其中經過 a 的數量。若有多條同長度路徑，會按比例分配。</p>
+<p>本組使用 <code>networkx.betweenness_centrality(core, normalized=True)</code>，無向圖標準化係數為 <code>2 / ((n−1)(n−2))</code>。未抽樣近似，邊不加權，路徑端點不計入。這是一般圖的標準化公式，沒有改用雙模專屬的標準化方式。</p>
+<p>分數較高可用來描述橋接位置，但我們沒有觀察資訊真的沿最短路徑傳遞，也沒有因此證明該帳號促成合作。</p>
+<h4>Eigenvector：連到的節點是否也處於中心？</h4>
+<p>白話是「連結的數量以外，也考慮所連節點在整張圖裡的位置」。在這張二模圖，帳號連到儲存庫；儲存庫又連到帳號，分數由彼此的連結結構共同決定。不能簡化成「認識名人」或「專案星號多」。本計算沒有輸入星號、粉絲或職稱。</p>
+<p>數學上，把核心參與矩陣 B 轉成 103 × 103 的對稱鄰接矩陣 A：</p>
+<pre><code class="language-text">A = [ 0    B  ]
+    [ Bᵀ   0  ]
+A x = λ x
+</code></pre>
+<p>x 是每個節點的分數，λ 是對應的特徵值；等價地，一個節點相鄰節點的分數總和，等於自身分數乘上 λ。計算使用 <code>networkx.eigenvector_centrality(core, max_iter=1000, tol=1e-10)</code>，預設等值初始向量與 <code>weight=None</code>。NetworkX 在冪次迭代中使用 A＋I 幫助收斂，特徵向量方向不變。<a href="https://networkx.org/documentation/networkx-3.2/reference/algorithms/generated/networkx.algorithms.centrality.eigenvector_centrality.html">演算法說明</a></p>
+<p>計算後將帳號分數除以最高帳號分數，讓最高值為 1。<strong>1 不是 100% 影響力；0.8 也不是 80% 的貢獻。</strong>它是這張網絡內的相對分數。改動時間、專案、核心門檻或事件定義，結果可能改變。</p>
+<p>四種指標回答不同問題，因此不加總成一個「最重要人物」總分。公開 CSV 保留五位小數，網站卡片顯示三位；顯示同分不一定代表未四捨五入前完全相同。</p>
+<h3>圖上為什麼沒有畫出全部帳號？</h3>
+<ol>
+<li>整體統計涵蓋所選類型的所有保留帳號。</li>
+<li>各事件層先找出跨至少兩個專案的帳號，建立該層核心。</li>
+<li>為了可讀性，圖上最多畫 40 個帳號，按該層未四捨五入的中介中心度挑選。同分再比較專案數、事件數與帳號名稱。</li>
+</ol>
+<p>所以，沒有出現在示例圖上不代表沒有參與。切換 Issue／PR／Review 後，門檻套用的是該類事件，示例帳號也可能改變。下方四張中心度比較卡始終使用「全部事件」核心，不跟著篩選器重新計算；分層核心可能不連通，不能直接把不同層的分數當成同一尺度比較。</p>
+<h3>每日平均與有向審查網絡</h3>
+<p>時間切片前三段各 7 天，最後一段 10 天。用 <code>該段事件列數 ÷ 天數</code> 算每日平均，才不會只因天數更多就看起來比較活躍。</p>
+<p>有向審查分析是另一個補充分析：只取 <code>PullRequestReviewEvent</code>，以事件觸發帳號為審查者、該類事件中的 <code>creator_user_login</code> 為 PR 作者，建立「審查者 → PR 作者」。排除作者缺漏、作者被辨識為自動化帳號及自己指向自己的情況。沒有用留言事件推斷留言者的對話對象。<strong>四種中心度使用前述帳號—儲存庫無向核心，並非這個有向人際網絡。</strong></p>
+<h3>與課文怎麼對照？</h3>
+<p><a href="https://sna-studio-course-tw.cs-lee.chatgpt.site/week/2">課程 W02</a>的 Davis Southern Club Women 是「女性 × 社交活動」的 0／1 出席矩陣；本組是「帳號 × 儲存庫」的 0／1 事件參與矩陣。兩者資料結構相似，使用的資料集不同。共同出席不等於友誼，正如共同參與專案不等於帳號曾直接合作。</p>
+<p><a href="https://sna-studio-course-tw.cs-lee.chatgpt.site/week/6">課程 W06</a>列出 degree、closeness、betweenness、eigenvector，對應 Hanneman &amp; Riddle 第 10 章的中心度主題。本組比較同一張圖的四種位置，並公開參數。跨專案與中介位置也可連結「橋接」概念，但本組未計算 Burt constraint 或 effective size，不能宣稱已完成正式的結構洞指標分析。</p>
+<p><a href="#results">下一篇：結果與限制</a></p></section>
+<section class="chapter" id="results"><h2>04｜結果與限制</h2>
+<h3>事件多、帳號多、連線多是不同的量</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>網站事件分類</th>
+<th style="text-align: right;">清理後事件列數</th>
+<th style="text-align: right;">不同帳號數</th>
+<th style="text-align: right;">在該類事件中跨至少兩個專案的帳號數</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全部所選事件</td>
+<td style="text-align: right;">12,742</td>
+<td style="text-align: right;">1,379</td>
+<td style="text-align: right;">93</td>
+</tr>
+<tr>
+<td>Issue</td>
+<td style="text-align: right;">1,070</td>
+<td style="text-align: right;">538</td>
+<td style="text-align: right;">23</td>
+</tr>
+<tr>
+<td>討論</td>
+<td style="text-align: right;">4,474</td>
+<td style="text-align: right;">1,035</td>
+<td style="text-align: right;">62</td>
+</tr>
+<tr>
+<td>PR</td>
+<td style="text-align: right;">1,874</td>
+<td style="text-align: right;">388</td>
+<td style="text-align: right;">27</td>
+</tr>
+<tr>
+<td>Review</td>
+<td style="text-align: right;">5,324</td>
+<td style="text-align: right;">175</td>
+<td style="text-align: right;">27</td>
+</tr>
+</tbody>
+</table></div>
+<p>Review 事件列數多於 PR，但出現的不同帳號較少。可以說「在本定義與期間內，審查相關事件由較小的帳號集合產生」，不能把不同類型的一筆事件當成相同工作量，也不能把 5,324 說成審查了 5,324 份不同 PR。</p>
+<h3>三組角色重疊</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>比較</th>
+<th style="text-align: right;">共同帳號（交集）</th>
+<th style="text-align: right;">至少一種活動的不同帳號（聯集）</th>
+<th style="text-align: right;">Jaccard</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Issue 與 PR</td>
+<td style="text-align: right;">125</td>
+<td style="text-align: right;">801</td>
+<td style="text-align: right;">0.156</td>
+</tr>
+<tr>
+<td>Issue 與 Review</td>
+<td style="text-align: right;">69</td>
+<td style="text-align: right;">644</td>
+<td style="text-align: right;">0.107</td>
+</tr>
+<tr>
+<td>PR 與 Review</td>
+<td style="text-align: right;">127</td>
+<td style="text-align: right;">436</td>
+<td style="text-align: right;">0.291</td>
+</tr>
+</tbody>
+</table></div>
+<p>本研究這三組比較中，PR 與 Review 的帳號集合相對最接近；Issue 與 Review 較少重疊。這些分數沒有附統計檢定或信賴區間，不能說差異已達統計顯著，也沒有證明有人從一種角色轉換成另一種。</p>
+<h3>如何讀 93 與 59？</h3>
+<ul>
+<li>93 是「在至少兩個選定專案留下任一所選事件」的帳號。</li>
+<li>59 是其中又同時有「Issue／討論」和「PR／Review」活動的帳號。</li>
+<li><code>93 / 1,379 ≈ 6.7%</code> 是保留帳號中跨專案的比例。</li>
+<li><code>59 / 93 ≈ 63.4%</code> 是跨專案帳號中又跨兩類活動的比例；<code>59 / 1,379 ≈ 4.3%</code> 是全體保留帳號中的比例。報告比例時必須說明分母。</li>
+</ul>
+<p>「跨角色」只是可觀察的活動組合，不代表已確認帳號的職務、專業身分或協調成果。</p>
+<h3>四種中心度顯示不同的位置</h3>
+<p>以下為全部事件核心的帳號分數，分數已按分析輸出四捨五入；同分只按名稱排列，排列先後不表示差異。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>指標</th>
+<th>排名前列的例子</th>
+<th>可以怎麼說</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Degree</td>
+<td>faaany、steveepreston、stevhliu、Wauplin 均為 5</td>
+<td>這四個帳號都連到五個選定專案</td>
+</tr>
+<tr>
+<td>Closeness</td>
+<td>stevhliu、Wauplin 均約 0.48571</td>
+<td>在這張核心中，到其他節點的最短路徑整體較短</td>
+</tr>
+<tr>
+<td>Betweenness</td>
+<td>Wauplin 約 0.01591，stevhliu 約 0.01262</td>
+<td>在其他節點最短路徑上所占比例較高</td>
+</tr>
+<tr>
+<td>Eigenvector</td>
+<td>faaany、steveepreston 的帳號內縮放值均為 1；stevhliu 約 0.91027</td>
+<td>連結結構使這些帳號取得較高的特徵向量分數</td>
+</tr>
+</tbody>
+</table></div>
+<p>Wauplin 的 degree 也是 5，但 eigenvector 約 0.82850。因此連到相同數量的專案，不保證 eigenvector 相同；連到哪些專案也會影響結果。不能據此評判帳號能力，亦不能比較某人的 eigenvector 0.8 和另一人的 betweenness 0.02，說前者「重要四十倍」。</p>
+<p>完整數值見<a href="./repro/centrality-scores.csv">中心度 CSV</a>。中心度計算涵蓋核心的所有節點，網站圖為可讀性最多顯示 40 個示例帳號；挑選示例不會把中心度改算在那 40 個帳號上。</p>
+<h3>時間切片</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>日期（UTC，包含首尾日期）</th>
+<th style="text-align: right;">天數</th>
+<th style="text-align: right;">保留事件列數</th>
+<th style="text-align: right;">每日平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1/1–1/7</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">2,040</td>
+<td style="text-align: right;">291.43</td>
+</tr>
+<tr>
+<td>1/8–1/14</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">3,099</td>
+<td style="text-align: right;">442.71</td>
+</tr>
+<tr>
+<td>1/15–1/21</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">3,052</td>
+<td style="text-align: right;">436.00</td>
+</tr>
+<tr>
+<td>1/22–1/31</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">4,551</td>
+<td style="text-align: right;">455.10</td>
+</tr>
+</tbody>
+</table></div>
+<p>網站顯示四捨五入的 291、443、436、455 筆／日。第一段較少，只能作月份內的描述；沒有足夠依據說是節日、發布或其他事件造成。</p>
+<h3>補充的審查者 → 作者關係</h3>
+<p>經欄位可辨識、非自我指向等篩選後，保留 2,058 筆有向審查事件，共 675 種不同的「審查者、PR 作者」有序配對，涉及 108 個審查者帳號與 339 個作者帳號。兩個帳號集合可能重疊，所以 108＋339 不能直接當成不同人數。</p>
+<p>同一對帳號可重複出現，因此 2,058 是事件列數、675 是不同配對數。箭頭表示審查對象的方向，並不證明權力、指導或實際影響方向。這裡沒有把全部 5,324 筆 Review 分類事件都當成人際有向邊。</p>
+<h3>說明結論時必須保留的限制</h3>
+<ol>
+<li><strong>觀察邊界有限。</strong>只有十個目的性選取的儲存庫、2025 年 1 月、五種公開事件。單一專案帳號可能在未選入的 repo 很活躍。</li>
+<li><strong>公開紀錄不是完整工作。</strong>不包含私人或線下活動，也沒有分析每筆修改與對話內容。</li>
+<li><strong>帳號不等於真人。</strong>已排除可辨識機器人，但可能仍有自動化、共用或改名帳號；也沒有真人身分認證。</li>
+<li><strong>沒有逐筆核對鏡像。</strong>原始快照未保存唯一 event ID，沒有完成逐時原檔比對或依 event ID 的去重。不能保證無重複或遺漏。</li>
+<li><strong>中心度依網絡定義而變。</strong>單一專案帳號未進入中心度核心，得到的是跨專案核心的位置。沒有比較多種門檻、月份或權重的敏感度分析。</li>
+<li><strong>結果是描述性的。</strong>沒有證明因果、品質、工作量或個人價值，也沒有統計顯著性的主張。</li>
+</ol>
+<h3>報告可以怎麼收尾？</h3>
+<blockquote>
+<p>在這十個專案、這一個月的公開事件中，不同活動的帳號只有部分重疊。大多數帳號只出現在一個選定專案，少數帳號跨越專案，其中一部分同時參與社群類與程式碼類活動。不同中心度提供不同的位置資訊；我們把這些結果當成協作結構的描述，並保留資料與網絡邊界的限制。</p>
+</blockquote>
+<p><a href="#questions">下一篇：常見疑問</a></p></section>
+<section class="chapter" id="questions"><h2>05｜常見疑問與報告答問</h2>
+<h3>1. 我們到底做了什麼？</h3>
+<p>我們取得指定範圍的公開活動資料，重新整理與分析。研究重點是「哪些帳號參與哪些專案，以及不同活動的參與帳號有多少重疊」。網站讓大家可以切換活動類型、查看關係，再理解背後的數字。</p>
+<h3>2. Issue 是真的處理問題？PR 是只提出想法？Review 是點開看過？</h3>
+<p>這三種理解都需要調整：</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>名詞</th>
+<th>日常比喻</th>
+<th>GitHub 上的意思</th>
+<th>不能直接推論</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Issue（議題）</td>
+<td>開一張問題單</td>
+<td>記錄問題、需求或待辦；事件也可來自關閉、重新開啟議題</td>
+<td>開問題單不等於已修改程式或解決問題</td>
+</tr>
+<tr>
+<td>PR（Pull Request）</td>
+<td>交出一份修改稿，請負責人收進正式版本</td>
+<td>提出分支間的修改供討論與合併；事件也可來自關閉、重新開啟 PR</td>
+<td>提出不等於被合併；觸發 PR 事件的帳號不一定是原作者</td>
+</tr>
+<tr>
+<td>Review（審查）</td>
+<td>審稿並留下意見</td>
+<td>對 PR 送出審查或審查留言；本網站合併兩種事件</td>
+<td>只是點開、閱讀頁面不算本研究的 Review 事件</td>
+</tr>
+</tbody>
+</table></div>
+<p>例如：小明回報「按鈕失效」是開 Issue；小美寫好修正並送出 PR；小華檢查修改並送出審查。維護者可能合併，也可能要求修改或關閉。這是教學情境，<strong>本資料沒有追蹤每個 Issue 是否對應某個 PR</strong>。</p>
+<h3>3. 十個名稱是十份資料集嗎？是同一個人的 GitHub 嗎？</h3>
+<p>它們是 Hugging Face <strong>組織</strong>底下的十個程式碼儲存庫，也就是十個軟體專案。Datasets 恰好是其中一個軟體函式庫的名字。研究用的「資料集」則是這些專案在指定期間的公開事件擷取檔。</p>
+<p>不同帳號可以回報問題、留言或送 PR。有寫入權限的成員才能直接寫入主專案；外部貢獻者通常先在自己的分支或 fork 修改，再送 PR。因此不能把所有參與者都當成直接共同編輯主專案的人。</p>
+<h3>4. 下載後就有 Issue／PR／Review 三欄打勾嗎？</h3>
+<p>不是。GH Archive 原始檔是壓縮的 JSON 事件紀錄；我們的擷取檔是 JSONL，每行一筆事件，有時間、帳號、專案、事件類型、動作等九個欄位。同一帳號可能有很多行。</p>
+<p>分析程式才把這些行整理成集合或表格。例如某帳號本月有一次 Issue 活動、十次 PR 活動，就會同時出現在 Issue 與 PR 的帳號集合。比較重疊時每個帳號在每個集合只算一次。</p>
+<h3>5. 網絡裡有連線，就是修改過程式嗎？</h3>
+<p>連線表示帳號在該專案至少留下<strong>一筆目前選定類型的事件</strong>。在「全部」層，提出議題、留言、PR 動作、審查都能產生連線。只看 Review 層時，只有符合 Review 定義的事件能產生連線。</p>
+<p>同一帳號在同一專案有一筆或一百筆事件，二元網絡都只有一條線。事件次數另外計算。</p>
+<h3>6. 1,379、93、59 到底怎麼判斷？</h3>
+<p>依序問三個問題：</p>
+<ol>
+<li>在清理後的研究資料裡出現過嗎？有 <strong>1,379</strong> 個不同帳號名稱。</li>
+<li>在至少兩個選定專案出現過嗎？其中有 <strong>93</strong> 個。</li>
+<li>這 93 個裡，有同時留下「Issue 或討論」和「PR 或 Review」事件嗎？有 <strong>59</strong> 個。</li>
+</ol>
+<p>例如 A 在兩個專案都只留言，算進 93，但不算進 59。B 在一個專案留言、另一個專案送 PR，兩邊都算。C 只在同一專案留言和送 PR，雖然跨活動類型，仍不算進 93 或 59。這些是虛構例子。</p>
+<h3>7. Jaccard 是「連擊」或連線數嗎？</h3>
+<p>Jaccard 是<strong>兩個集合重疊的比例</strong>。像比較兩堂課的選課名單：同時選兩堂的人數，除以至少選一堂的不同人數。</p>
+<p>本研究 Issue 與 PR 的 Jaccard 是 <code>125 ÷ 801 ≈ 0.156</code>。它不是連線數，也不記錄動作順序，因此不能說是「先提 Issue、接著送 PR 的連擊」。同一帳號的兩種活動甚至可以發生在不同專案、不同議題。</p>
+<h3>8. 排除 813 筆機器人事件就是資料清理嗎？</h3>
+<p>是。先訂規則，再移除不符合研究分析對象的紀錄。813 是事件列數，不是帳號數。規則是帳號名稱以 <code>[bot]</code> 結尾，或名稱為 <code>HuggingFaceDocBuilderDev</code>；不保證抓到全部自動化活動。</p>
+<h3>9. 沒下載全部逐時壓縮檔，會比較不精確嗎？</h3>
+<p>下載多少無關事件，和我們的研究範圍是否完整，是兩件需要分別檢查的事。只查詢指定範圍可以很有效率，但仍要確認時間、事件、專案條件以及服務是否截斷資料。</p>
+<p>本研究的來源是 GH Archive 的 ClickHouse 鏡像，分四段取得所選紀錄；沒有逐筆核對 GH Archive 原始檔，也沒有擷取原始事件 ID 做去重。因此應說「依鏡像回傳的研究範圍分析」，不能保證與原檔完全一致。細節與可改進之處見<a href="#reproduce">重現步驟</a>。</p>
+<h3>10. Eigenvector 最高就是最厲害的人嗎？</h3>
+<p>它衡量在<strong>指定網絡</strong>裡，是否連到同樣較中心的節點。在本研究，帳號連到的是儲存庫；帳號與儲存庫的分數互相影響。最高帳號分數縮放成 1，並不代表百分之百的能力或影響力。</p>
+<p>Degree 看參與幾個專案，closeness 看到其他節點的距離，betweenness 看最短路徑的中介位置，eigenvector 看與高分節點的連結。四種指標各有問題意識，不能直接合成「誰最有貢獻」的結論。</p>
+<h3>11. 和課堂資料有什麼相似之處？</h3>
+<p>課堂 W02 的 Davis 個案是「女性 × 社交活動」：某人參加某活動記 1。本研究是「帳號 × 儲存庫」：某帳號在某專案有指定事件記 1。兩者都是雙模資料，有兩種不同類型的節點。資料結構相似，研究對象與關係意義不同。</p>
+<h3>12. 其他人需要我的 GPT 或電腦才能看嗎？</h3>
+<p>公開 GitHub Pages 網站由 GitHub 提供。讀者用瀏覽器開啟網站網址即可，不需要登入 ChatGPT，也不需要你的電腦開機。<code>127.0.0.1</code> 則是每個人自己電腦的本機網址，不適合拿來分享。</p>
+<h3>可以記住的報告說法</h3>
+<blockquote>
+<p>我們分析十個 Hugging Face 專案在 2025 年 1 月的公開事件，用「帳號參與專案」建立雙模網絡。不同活動的帳號部分重疊，1,379 個帳號中有 93 個跨專案，其中 59 個又跨兩類活動。中心度幫助我們描述網絡位置，但不代表個人能力或貢獻價值。</p>
+</blockquote>
+<p>術語依據：<a href="https://docs.github.com/en/rest/using-the-rest-api/github-event-types">GitHub 事件定義</a>、<a href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests">About pull requests</a>、<a href="https://www.gharchive.org/">GH Archive</a>。研究數字與條件見<a href="#methods">計算方法</a>。</p></section>
+<section class="chapter" id="reproduce"><h2>06｜重現分析、資料版本與發布</h2>
+<h3>先區分三件事</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>你想做什麼</th>
+<th>需要什麼</th>
+<th>能確認什麼</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>閱讀或展示現有結果</td>
+<td>瀏覽器與網站</td>
+<td>已發布的資料與圖表</td>
+</tr>
+<tr>
+<td>從同一份原始擷取檔重算</td>
+<td>原始 JSONL、分析程式、套件版本</td>
+<td>相同規則是否產生相同分析數字</td>
+</tr>
+<tr>
+<td>重新向鏡像取得資料再算</td>
+<td>網路、查詢與取得程式</td>
+<td>現在的鏡像對同樣條件回傳什麼</td>
+</tr>
+</tbody>
+</table></div>
+<p>第三項不保證和原始擷取檔完全相同。鏡像內容、欄位定義、公開服務的限制都可能改變。重新查詢和重算現有檔案應分別記錄。</p>
+<h3>專案提供什麼？</h3>
+<ul>
+<li><code>analysis/events.sql</code>：十個儲存庫 ID、五種事件與時間邊界。</li>
+<li><code>analysis/fetch_events.py</code>：分四段查詢鏡像，儲存九個分析欄位。</li>
+<li><code>analysis/analyze.py</code>：清理、建立集合與二模網絡、輸出統計及中心度。</li>
+<li><code>docs/data.json</code>：網站使用的固定分析結果。</li>
+<li><code>docs/repro/centrality-scores.csv</code>：93 個跨專案帳號的四項中心度。</li>
+<li><code>data/provenance.json</code>：原始擷取檔的 SHA-256、列數與版本資訊。</li>
+<li><code>guide/</code> 與 <code>analysis/build_guide.py</code>：導讀原稿與靜態網頁產生程式。</li>
+</ul>
+<p>原始 <code>data/raw-events.jsonl</code> <strong>未附在公開儲存庫</strong>。只有這個儲存庫時，可以檢查分析程式與已發布結果，也可以重新查詢；若要針對原始擷取檔完全重算，仍須另取得該檔，並比對 SHA-256。雜湊能識別檔案版本，不能證明來源完整或內容正確。</p>
+<h3>安裝與重新取得</h3>
+<p>以下命令在專案根目錄執行。原分析環境是 Python 3.12.4、NetworkX 3.2.1；導讀產生使用 Markdown 3.4.1。</p>
+<pre><code class="language-bash">git clone https://github.com/xxoon0987/sna-j-gharchive.git
+cd sna-j-gharchive
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python analysis/fetch_events.py --output data/raw-events-new.jsonl
+</code></pre>
+<p>Windows 的啟用環境命令改用 <code>.venv\Scripts\activate</code>。公共鏡像服務可能限流、停用或改變資料表；程式失敗時應先確認服務和欄位，不能把不完整回應當成完整資料。程式使用公開示範帳號 <code>demo</code>，不是個人的 GitHub 憑證。</p>
+<h3>重新計算</h3>
+<pre><code class="language-bash">python analysis/analyze.py --input data/raw-events-new.jsonl --output docs/data.json --centrality-csv docs/repro/centrality-scores.csv
+python analysis/build_guide.py
+python -m http.server 4173 --directory docs
+</code></pre>
+<p>再用瀏覽器開啟 <code>http://127.0.0.1:4173/</code>。不要直接雙擊 <code>index.html</code>，因為瀏覽器可能阻擋從本機檔案讀取 JSON。</p>
+<p><strong>更新資料後，必須同步更新 README、六份導讀和講稿的數字及版本紀錄。</strong> 這些文件是人工解釋，不會隨 JSON 自動改寫。<code>build_guide.py</code> 只將六份 Markdown 轉為網頁，不會重新分析資料。<code>docs/repro/</code> 的可下載程式也應與 <code>analysis/</code> 同步。</p>
+<h3>本次擷取的核對紀錄</h3>
+<p>時間是 UTC；每段含開始、不含結束。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可橫向捲動的資料表"><table>
+<thead>
+<tr>
+<th>查詢區間</th>
+<th style="text-align: right;">原始事件列數</th>
+<th style="text-align: right;">清理後列數</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 月 1 日至 1 月 8 日</td>
+<td style="text-align: right;">2,209</td>
+<td style="text-align: right;">2,040</td>
+</tr>
+<tr>
+<td>1 月 8 日至 1 月 15 日</td>
+<td style="text-align: right;">3,342</td>
+<td style="text-align: right;">3,099</td>
+</tr>
+<tr>
+<td>1 月 15 日至 1 月 22 日</td>
+<td style="text-align: right;">3,184</td>
+<td style="text-align: right;">3,052</td>
+</tr>
+<tr>
+<td>1 月 22 日至 2 月 1 日</td>
+<td style="text-align: right;">4,820</td>
+<td style="text-align: right;">4,551</td>
+</tr>
+<tr>
+<td>合計</td>
+<td style="text-align: right;"><strong>13,555</strong></td>
+<td style="text-align: right;"><strong>12,742</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>原取得程式為避開公開示範服務的單次 10,000 列限制而分段；每段實際列數均低於該限制。但<strong>低於限制本身，不等於已證明完整</strong>：原始擷取沒有額外保存每段 <code>COUNT(*)</code> 比對結果、原始事件 ID 或 HTTP 回應中繼資料；也沒有逐時 GH Archive 原檔的逐筆對照。這些是資料稽核仍可補強的部分。</p>
+<p>原始取得時間沒有獨立記錄；分析輸出的產生時間為 <code>2026-10-22T09:05:02+00:00</code>。這是程式產出時間，不能當成下載時間。研究事件本身發生於 2025 年 1 月。</p>
+<h3>更嚴謹地擴充研究</h3>
+<ol>
+<li>同時保存查詢條件、取得時間、HTTP 狀態與檔案雜湊。</li>
+<li>每段另查符合條件的總列數，和下載列數比較；超過上限就再縮短區間。</li>
+<li>若來源可提供，保留事件 ID 與帳號 ID，以便辨識重複和帳號改名。</li>
+<li>以相同時間、儲存庫和事件定義，比對 GH Archive 原始逐時檔。</li>
+<li>延長觀察期間、擴充樣本，再確認結論是否穩定。</li>
+</ol>
+<p>這些是後續改進方向，<strong>不是本次已完成的工作</strong>。目前分析未進行隨機抽樣、顯著性檢定、因果推論或中心度門檻的敏感度分析。</p>
+<h3>GitHub Pages 如何發布？</h3>
+<p>本專案使用靜態網站，不需要資料庫或伺服器程式。</p>
+<ol>
+<li>GitHub 儲存庫 → <strong>Settings → Pages</strong>。</li>
+<li>Source 選 <strong>Deploy from a branch</strong>。</li>
+<li>Branch 選 <strong>main</strong>，資料夾選 <strong>/docs</strong>，儲存。</li>
+<li>等待 GitHub Pages 部署完成，開啟 <a href="https://xxoon0987.github.io/sna-j-gharchive/">公開網站</a>。</li>
+</ol>
+<p>之後把更新推送到 <code>main</code> 的 <code>docs/</code>，GitHub Pages 就會重新發布。網站使用相對路徑，因此可在 <code>/sna-j-gharchive/</code> 這個專案網址下正常讀取樣式與資料。<code>.nojekyll</code> 讓這份現成的 HTML／CSS／JavaScript 以靜態檔發布。</p>
+<p>設定依據：<a href="https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site">GitHub Pages 發布來源文件</a>。</p></section></article>
+    </div>
+  </main>
+  <footer><span>第 J 組 · 社會網絡分析報告</span><a href="./index.html">回到互動報告 →</a></footer>
+</body>
+</html>

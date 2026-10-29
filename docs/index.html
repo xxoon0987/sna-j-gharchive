@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101b21" />
+    <meta name="description" content="第 J 組社群網絡分析報告：以 2025 年 1 月 GH Archive 公開事件探索十個 Hugging Face 開源專案的協作與橋接角色。" />
+    <title>開源協作地圖｜第 J 組 SNA 報告</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳至主要內容</a>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="回到首頁">
+        <span class="brand-mark">J<span class="brand-dot">.</span></span>
+        <span class="brand-copy">OPEN SOURCE<br />ATLAS</span>
+      </a>
+      <nav class="site-nav" aria-label="頁面導覽">
+        <a href="#question">研究問題</a>
+        <a href="#scope">資料範圍</a>
+        <a href="#network">互動網絡</a>
+        <a href="#findings">研究發現</a>
+        <a href="#method">方法與限制</a>
+        <a href="./guide.html">白話導讀 ↗</a>
+      </nav>
+      <button id="fullscreenBtn" class="present-button" type="button" aria-label="切換全螢幕簡報">⛶ <span>簡報模式</span></button>
+    </header>
+
+    <main id="main">
+      <section class="hero page-section" id="top">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="eyebrow-line"></span> SNA CASE 03 <span class="divider">/</span> GROUP J</p>
+            <h1>誰在開源專案裡<br /><em>連接程式碼</em>與社群？</h1>
+            <p class="hero-lede">同一個帳號，會同時留下議題、討論、PR 和審查活動嗎？我們用一個月的公開事件，畫出十個 Hugging Face 專案之間可觀察的連結。</p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#network">探索互動網絡 <span aria-hidden="true">↗</span></a>
+              <a class="button button-text" href="./guide.html">第一次看？從白話導讀開始 <span aria-hidden="true">↗</span></a>
+            </div>
+            <p class="hero-meta">GH Archive 公開事件 <span>·</span> 2025.01.01—01.31 UTC <span>·</span> 10 個儲存庫</p>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <svg viewBox="0 0 560 520" fill="none" class="orbit-art">
+              <circle cx="280" cy="260" r="187" class="orbit-line" />
+              <circle cx="280" cy="260" r="135" class="orbit-line faint" />
+              <circle cx="280" cy="260" r="76" class="orbit-line faint" />
+              <path d="M125 160 L245 118 L388 145 L428 281 L319 406 L155 365 L125 160 M245 118 L319 406 M125 160 L428 281 M388 145 L155 365 M155 365 L245 118" class="orbit-edges" />
+              <path d="M125 160 L280 260 L428 281 M245 118 L280 260 L319 406 M388 145 L280 260 L155 365" class="orbit-edges bright" />
+              <circle cx="280" cy="260" r="30" class="orbit-core" />
+              <circle cx="125" cy="160" r="12" class="orbit-node teal" />
+              <circle cx="245" cy="118" r="9" class="orbit-node lime" />
+              <circle cx="388" cy="145" r="11" class="orbit-node teal" />
+              <circle cx="428" cy="281" r="9" class="orbit-node coral" />
+              <circle cx="319" cy="406" r="13" class="orbit-node lime" />
+              <circle cx="155" cy="365" r="10" class="orbit-node teal" />
+              <circle cx="280" cy="260" r="7" fill="#d8f9f2" />
+              <circle cx="190" cy="216" r="4" fill="#eeb990" />
+              <circle cx="350" cy="227" r="4" fill="#eeb990" />
+              <circle cx="248" cy="334" r="4" fill="#eeb990" />
+              <text x="284" y="275" text-anchor="middle" class="art-caption">NETWORK</text>
+            </svg>
+            <div class="hero-art-note"><span class="pulse"></span> RESEARCH WINDOW / JAN 2025</div>
+          </div>
+        </div>
+        <div class="hero-stats" aria-label="研究資料摘要">
+          <div><span class="stat-number" id="statRepos">10</span><span class="stat-label">選定專案</span></div>
+          <div><span class="stat-number" id="statRows">—</span><span class="stat-label">原始公開事件</span></div>
+          <div><span class="stat-number" id="statActors">—</span><span class="stat-label">分析帳號</span></div>
+          <div><span class="stat-number" id="statBridges">—</span><span class="stat-label">跨專案參與者</span></div>
+        </div>
+      </section>
+
+      <section class="question page-section" id="question">
+        <div class="section-heading">
+          <p class="eyebrow">01 / THE QUESTION</p>
+          <h2>「有參與」與「能橋接」<br />是兩件不同的事。</h2>
+          <p>我們把事件拆成不同角色，觀察同一批帳號是否同時出現在議題、PR 與審查網絡，以及誰跨越不同儲存庫。</p>
+        </div>
+        <div class="question-grid">
+          <article class="question-card">
+            <span class="card-index">Q / 01</span>
+            <div class="card-icon">◇</div>
+            <h3>角色是否重疊？</h3>
+            <p>參與 issue 動作、PR 動作與 review 的帳號，有多少是同一批人？</p>
+          </article>
+          <article class="question-card">
+            <span class="card-index">Q / 02</span>
+            <div class="card-icon">↔</div>
+            <h3>誰跨越專案？</h3>
+            <p>在十個專案中，哪些帳號連接原本分開的參與群？</p>
+          </article>
+          <article class="question-card">
+            <span class="card-index">Q / 03</span>
+            <div class="card-icon">◎</div>
+            <h3>不同網絡怎麼變？</h3>
+            <p>切換事件類型後，專案間的共同參與者與橋接路徑是否改變？</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="scope page-section" id="scope">
+        <div class="section-heading split-heading">
+          <div>
+            <p class="eyebrow">02 / DATA BOUNDARY</p>
+            <h2>把觀察邊界<br />說清楚。</h2>
+          </div>
+          <p>資料取自 GH Archive 公開 GitHub 事件，透過 ClickHouse 的公開鏡像查詢。以 2025 年 1 月為固定視窗，選取同一開源生態系中的十個專案，便於觀察跨庫參與。</p>
+        </div>
+        <div class="scope-layout">
+          <div class="scope-panel">
+            <div class="panel-topline"><span>PROJECT SET</span><span>10 REPOSITORIES</span></div>
+            <div class="repo-chips" id="repoChips" aria-label="研究的十個儲存庫"></div>
+          </div>
+          <div class="scope-panel event-panel">
+            <div class="panel-topline"><span>EVENT LAYERS</span><span>4 LENSES</span></div>
+            <div class="event-layers" id="eventLayers"></div>
+            <div class="event-explain">
+              <p><strong>Issue</strong>：提出、關閉或重新開啟議題；不等於修改程式碼。</p>
+              <p><strong>討論</strong>：在 issue 或 PR 下留言，兩者在此資料中不硬拆。</p>
+              <p><strong>PR</strong>：提出、關閉或重新開啟程式碼修改提案；提出不等於已合併。</p>
+              <p><strong>Review</strong>：送出 PR 審查或留下審查意見；只是點開閱讀不算。</p>
+              <p><strong>帳號</strong>記錄事件的觸發者，例如關閉 PR 的帳號可能是維護者，未必是 PR 作者。</p>
+            </div>
+          </div>
+        </div>
+        <div class="scope-clarifier"><strong>這十個是 GitHub 程式碼儲存庫，不是十份資料集。</strong>它們位於 Hugging Face 組織帳號下；公開專案可由外部帳號提議修改，是否合併由專案維護者決定。我們查詢事件的時間、帳號、專案、類型及少量分析欄位，不下載留言全文。13,555 筆查詢結果中排除 813 筆可辨識的自動化帳號事件，這一步屬於資料清理。</div>
+      </section>
+
+      <section class="network page-section" id="network">
+        <div class="section-heading split-heading">
+          <div>
+            <p class="eyebrow">03 / NETWORK EXPLORER</p>
+            <h2>換一種關係，<br />就換一張地圖。</h2>
+          </div>
+          <p>左邊是十個儲存庫，右邊是依跨庫中介中心度挑出的示例帳號。每條線表示該帳號在該專案留下至少一筆所選類型的公開事件；可以是議題、留言、PR 或審查，不限於修改程式碼。點選節點查看資料。</p>
+        </div>
+        <div class="explorer-shell">
+          <div class="explorer-toolbar">
+            <div class="filter-group" id="layerFilters" role="group" aria-label="選擇事件類型">
+              <button type="button" data-layer="all" aria-pressed="true">全部</button>
+              <button type="button" data-layer="issues" aria-pressed="false">Issue</button>
+              <button type="button" data-layer="discussion" aria-pressed="false">討論</button>
+              <button type="button" data-layer="pulls" aria-pressed="false">PR</button>
+              <button type="button" data-layer="reviews" aria-pressed="false">Review</button>
+            </div>
+            <button class="quiet-button" type="button" id="resetSelection">清除選取 ↺</button>
+          </div>
+          <div class="explorer-metrics" aria-live="polite">
+            <span><strong id="viewEvents">—</strong> 筆事件</span>
+            <span><strong id="viewActors">—</strong> 個帳號</span>
+            <span><strong id="viewBridgeCount">—</strong> 個跨庫帳號</span>
+          </div>
+          <div class="explorer-body">
+            <div class="graph-wrap">
+              <div class="graph-head"><span>REPOSITORIES</span><span>PARTICIPANTS</span></div>
+              <svg id="networkGraph" viewBox="0 0 1160 690" role="img" aria-label="開發者與儲存庫的二模網絡示例"></svg>
+              <p class="graph-footnote">圖上最多顯示 40 個跨庫示例帳號。上方統計涵蓋該事件層的所有保留帳號；中心度在該層跨專案核心計算，下方四項中心度比較固定使用全部事件核心。</p>
+            </div>
+            <aside class="detail-panel" id="detailPanel" aria-live="polite">
+              <span class="detail-kicker">NODE INSPECTOR</span>
+              <div class="detail-empty"><span class="detail-symbol">✳</span><h3>選一個節點</h3><p>點選專案或帳號，就能看見它在這個網絡中的位置與事件組成。</p></div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="findings page-section" id="findings">
+        <div class="section-heading split-heading">
+          <div>
+            <p class="eyebrow">04 / WHAT THE DATA SAYS</p>
+            <h2>角色有交集，<br />但並不完全重合。</h2>
+          </div>
+          <p>以下數字比較的是帳號集合，不是工作品質。Jaccard 相似度＝兩組共同帳號 ÷ 兩組至少參與一種事件的帳號；越接近 1，重疊越多。</p>
+        </div>
+        <div class="finding-layout">
+          <div class="finding-card highlight-card">
+            <span class="card-index">ROLE OVERLAP / JACCARD</span>
+            <div class="overlap-list" id="overlapList"></div>
+            <p class="finding-note">Issue 指 IssuesEvent；PR 指 PullRequestEvent；Review 指 PR 審查與審查留言。它們是不同大小的帳號群，解讀時需同時看樣本量。</p>
+          </div>
+          <div class="finding-card bridge-card">
+            <span class="card-index">CROSS-ROLE BRIDGES</span>
+            <strong class="feature-number" id="crossRoleCount">—</strong>
+            <h3>個帳號兼具社群與程式碼活動，且參與兩個以上專案。</h3>
+            <p>這些帳號在 issue／討論與 PR／審查至少各留下事件。這表示可觀察的跨角色參與，不能單憑事件推定其實際影響力。</p>
+          </div>
+        </div>
+        <div class="evidence-row">
+          <div class="evidence-heading"><span class="card-index">TIME SLICES / EVENTS PER DAY</span><h3>一月四段時間切片</h3><p>末段包含 10 天，其餘每段 7 天，因此將各類事件換算成每日平均後比較。</p></div>
+          <div class="weekly-chart" id="weeklyChart" role="img" aria-label="2025 年 1 月不同事件類型的每日平均數"></div>
+        </div>
+        <div class="review-callout">
+          <span class="review-icon">↗</span>
+          <div><span class="card-index">DIRECTED REVIEW NETWORK</span><h3><span id="directedReviews">—</span> 筆可辨識方向的審查事件</h3><p>使用 PullRequestReviewEvent，建立「審查者 → PR 作者」的有向關係；排除自己審查自己的事件。留言類事件只用於帳號—專案網絡，避免錯認留言者與原作者。</p></div>
+          <span class="review-pairs"><strong id="reviewPairs">—</strong><small>審查者—作者配對</small></span>
+        </div>
+        <div class="centrality-lab" id="centrality">
+          <div class="centrality-intro"><span class="card-index">W06 / CENTRALITY LAB</span><h3>用哪一把尺，找出「重要」的網絡位置？</h3><p>為了公平比較，四項指標都在同一張「全部事件」二模核心上計算：<strong id="coreActors">—</strong> 個跨專案帳號、<strong id="coreRepos">—</strong> 個儲存庫、<strong id="coreEdges">—</strong> 條二元連線。關係無方向、無權重；只要有至少一筆事件就連線。分數描述位置，不是人物能力排名。</p></div>
+          <div class="centrality-grid" id="centralityGrid"></div>
+          <div class="math-strip"><div><span class="card-index">BASIC MATH / 關係矩陣</span><p>帳號在專案有至少一筆所選事件，矩陣格子記 <strong>1</strong>；沒有則記 <strong>0</strong>。帳號的 degree ＝該列的 1 相加。</p></div><div><span class="card-index">BASIC MATH / 角色重疊</span><p>Issue 與 PR 共有 <strong id="overlapIntersection">—</strong> 個帳號、合計有 <strong id="overlapUnion">—</strong> 個不同帳號；Jaccard ＝共有 ÷ 合計 ＝ <strong id="overlapWorked">—</strong>。</p></div></div>
+        </div>
+      </section>
+
+      <section class="method page-section" id="method">
+        <div class="section-heading split-heading">
+          <div>
+            <p class="eyebrow">05 / METHOD & LIMITS</p>
+            <h2>讓結論可以<br />被重新檢查。</h2>
+          </div>
+          <p>網站呈現的是界定範圍內的公開事件。分析程式、SQL 查詢與資料處理規則可下載；原始事件文字不放入網站。</p>
+        </div>
+        <div class="method-grid">
+          <article><span>01 / 期間</span><h3>固定一個月</h3><p>2025 年 1 月 1 日 00:00 至 2 月 1 日 00:00 UTC，結束時間不含當刻。</p></article>
+          <article><span>02 / 節點與邊</span><h3>帳號 × 儲存庫</h3><p>帳號在專案產生指定事件即連一條邊。圖使用是否參與的二元關係；事件次數另行展示。</p></article>
+          <article><span>03 / 橋接</span><h3>看跨庫路徑</h3><p>至少參與兩個專案的帳號進入二模核心，以標準化中介中心度描述其所在位置。</p></article>
+          <article><span>04 / 倫理</span><h3>謹慎解讀</h3><p>平台事件不是完整工作紀錄；中心度不是能力或貢獻價值排名，也不能推論因果。</p></article>
+        </div>
+        <div class="course-bridge"><div><span class="card-index">COURSE CONNECTION / 課本對照</span><h3>和課堂的雙模網絡是同一種資料結構。</h3><p>第 2 週 Davis Southern Club Women 用「女性 × 社交活動」的 0／1 出席矩陣；本組改成「GitHub 帳號 × 儲存庫」的 0／1 事件參與矩陣。兩者都能比較共同參與，但共同出現不等於友誼或實際合作。第 6 週教的 degree、closeness、betweenness、eigenvector，則用來比較同一張網絡的不同位置。</p></div><div class="course-links"><a href="https://sna-studio-course-tw.cs-lee.chatgpt.site/week/2" target="_blank" rel="noopener noreferrer">課程 W02：雙模資料 ↗</a><a href="https://sna-studio-course-tw.cs-lee.chatgpt.site/week/6" target="_blank" rel="noopener noreferrer">課程 W06：中心度 ↗</a><a href="./repro/centrality-scores.csv" download>完整中心度 CSV ↓</a></div></div>
+        <div class="source-bar">
+          <div><span class="card-index">SOURCE & REPRODUCIBILITY</span><h3>從來源到圖表，保留每一步。</h3></div>
+          <div class="source-links">
+            <a href="./guide.html">六章完整導讀 ↗</a>
+            <a href="https://github.com/xxoon0987/sna-j-gharchive" target="_blank" rel="noopener noreferrer">GitHub 程式與講稿 ↗</a>
+            <a href="https://www.gharchive.org/" target="_blank" rel="noopener noreferrer">GH Archive ↗</a>
+            <a href="https://docs.github.com/en/rest/using-the-rest-api/github-event-types" target="_blank" rel="noopener noreferrer">GitHub 事件定義 ↗</a>
+            <a href="./repro/method.md">重現說明 ↓</a>
+            <a href="./repro/events.sql" download>查詢 SQL ↓</a>
+          </div>
+        </div>
+        <details class="limits-box">
+          <summary>研究限制與資料品質 <span>展開閱讀 ＋</span></summary>
+          <ul id="limitations"></ul>
+        </details>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-brand">J<span>.</span> <small>OPEN SOURCE ATLAS</small></div>
+      <p>第 J 組 · 社群網絡分析個案報告<br />2025 年 1 月資料切片 · 2026 年課程報告</p>
+      <a href="#top">回到頂端 ↑</a>
+    </footer>
+  </body>
+</html>

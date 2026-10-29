@@ -1,0 +1,47 @@
+{
+  "studyPeriodUTC": {
+    "startInclusive": "2025-01-01T00:00:00Z",
+    "endExclusive": "2025-02-01T00:00:00Z"
+  },
+  "source": "GH Archive via ClickHouse public github.github_events mirror",
+  "endpoint": "https://sql-clickhouse.clickhouse.com/",
+  "queryPath": "analysis/events.sql",
+  "querySHA256": "b778f96206e1bbc9dca186939f77d36ee17f386db42d4b99f8c4ff72fbccde57",
+  "originalRawExtract": {
+    "includedInRepository": false,
+    "sha256": "ba926cc9004132a109ede2698bc675af4d8563cc7727364d974462e52b75d711",
+    "rows": 13555,
+    "retrievedAt": null,
+    "retrievedAtNote": "Original retrieval time was not separately recorded."
+  },
+  "analysisGeneratedAt": "2026-10-22T09:05:02+00:00",
+  "documentationUpdatedDate": "2026-10-29",
+  "software": {
+    "python": "3.12.4",
+    "networkx": "3.2.1",
+    "Markdown": "3.4.1"
+  },
+  "output": {
+    "path": "docs/data.json",
+    "sha256": "8029a3387f0841b8da6167c13268a945292778b8d9c6d2fe02f16fee126ff1fd",
+    "rawRows": 13555,
+    "excludedBotRows": 813,
+    "retainedRows": 12742,
+    "distinctActorLogins": 1379,
+    "multiRepoActors": 93,
+    "crossRoleAndMultiRepoActors": 59
+  },
+  "rawWindowRows": [
+    2209,
+    3342,
+    3184,
+    4820
+  ],
+  "auditLimitations": [
+    "No independent retrieval timestamp or COUNT(*) response was preserved.",
+    "No original event ID or actor ID was selected.",
+    "No event-ID deduplication or row-by-row comparison to GH Archive hourly files was performed.",
+    "Re-querying the public mirror may return a different snapshot.",
+    "Actor logins are account identifiers, not verified individual people."
+  ]
+}
